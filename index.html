@@ -791,9 +791,9 @@ function dueLabel(dateStr) {
   const due = new Date(dateStr);
   const now = new Date();
   const diffDays = Math.floor((due - now) / 86400000);
-  if (diffDays < 0) return { text: 'Scaduta', cls: 'overdue' };
-  if (diffDays === 0) return { text: 'Oggi', cls: 'today' };
-  if (diffDays <= 2) return { text: `Fra ${diffDays}g`, cls: 'soon' };
+  if (diffDays < 1) return { text: 'Scaduta', cls: 'overdue' };
+  if (diffDays === 1) return { text: 'Oggi', cls: 'today' };
+  if (diffDays <= 3) return { text: `Fra ${diffDays}g`, cls: 'soon' };
   return { text: due.toLocaleDateString('it-IT', { day:'numeric', month:'short' }), cls: '' };
 }
 
