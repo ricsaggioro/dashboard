@@ -7,14 +7,14 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&family=Inter:wght@300;400;500&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #0c0c0c;
-  --surface: #000000;
-  --surface2: #000000;
-  --border: #222;
-  --border2: #2e2e2e;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface2: #111111;
+  --border: #1e1e1e;
+  --border2: #2a2a2a;
   --text: #ffffff;
-  --text2: #f0f0f0;
-  --text3: #e6e6e6;
+  --text2: #bbbbbb;
+  --text3: #666666;
   --accent: #d4ff6b;
   --accent2: #6bd4ff;
   --danger: #e05555;
@@ -649,9 +649,9 @@ body{
 // ─── CONFIG ───────────────────────────────────────────
 const DEFAULTS = {
   workerUrl:'',
-  bg:'#0c0c0c', surface:'#141414', surface2:'#1c1c1c',
-  border:'#222',
-  text:'#e2e2e2', text2:'#888', text3:'#444',
+  bg:'#000000', surface:'#0a0a0a', surface2:'#111111',
+  border:'#1e1e1e',
+  text:'#ffffff', text2:'#bbbbbb', text3:'#666666',
   accent:'#d4ff6b', accent2:'#6bd4ff',
   font:"'DM Sans', sans-serif", mono:"'DM Mono', monospace",
   taskSize:14, metaSize:11, clockHm:80, clockS:40,
@@ -1059,16 +1059,71 @@ function renderAll(tasks){
 function renderList(listId, emptyId, items, isEv){
   const list  = document.getElementById(listId);
   const empty = document.getElementById(emptyId);
-  // remove old cards
-  [...list.querySelectorAll('.task-card')].forEach(c=>c.remove());
-  if(!items.length){ empty.style.display='block'; return; }
+
+  if(!items.length){
+    [...list.querySelectorAll('.task-card')].forEach(c=>c.remove());
+    empty.style.display='block';
+    return;
+  }
   empty.style.display='none';
-  items.forEach((t,i)=>{
-    const card = makeCard(t,isEv);
-    card.style.animationDelay = (i*30)+'ms';
-    list.appendChild(card);
+
+  // Build a map of current cards by task name (used as key)
+  const existing = {};
+  [...list.querySelectorAll('.task-card')].forEach(c=>{
+    existing[c.dataset.key] = c;
+  });
+
+  const newKeys = items.map(t=>taskKey(t));
+
+  // Remove cards no longer in the list
+  Object.keys(existing).forEach(k=>{
+    if(!newKeys.includes(k)) existing[k].remove();
+  });
+
+  // Insert or update cards in correct order (no animation on updates)
+  items.forEach((t, i)=>{
+    const key = taskKey(t);
+    let card = existing[key];
+    const freshCard = makeCard(t, isEv);
+    freshCard.dataset.key = key;
+    freshCard.style.animationName = 'none'; // no animation on sync update
+
+    if(!card){
+      // New task — insert at correct position
+      freshCard.style.animationName = 'fadeUp'; // animate only truly new cards
+      const refNode = list.querySelectorAll('.task-card')[i] || null;
+      list.insertBefore(freshCard, refNode);
+    } else {
+      // Existing — check if content changed, replace silently if so
+      if(card.dataset.content !== freshCard.dataset.content){
+        freshCard.style.animationName = 'none';
+        list.insertBefore(freshCard, card);
+        card.remove();
+      } else {
+        // Reorder if position changed
+        const nodes = [...list.querySelectorAll('.task-card')];
+        if(nodes.indexOf(card) !== i){
+          const refNode = list.querySelectorAll('.task-card')[i] || null;
+          list.insertBefore(card, refNode);
+        }
+      }
+    }
   });
 }
+
+function taskKey(t){
+  return (t.name||'')+'|'+(t.due||'')+'|'+(t.status||'');
+}
+
+// Patch makeCard to also set data-content for diffing
+const _makeCard = makeCard;
+makeCard = function(task, isEv){
+  const card = _makeCard(task, isEv);
+  const key = taskKey(task);
+  card.dataset.key = key;
+  card.dataset.content = key + '|' + (task.tags||[]).join(',');
+  return card;
+};
 
 function setSyncStatus(ok, msg){
   document.getElementById('sync-dot').className = ok?'':'error';
