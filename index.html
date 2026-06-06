@@ -229,7 +229,9 @@ body{
 }
 
 /* WEATHER */
+#clock-widget{ flex:0 0 auto; }
 #weather-widget{
+  flex:1;
   gap:0;
 }
 #weather-top{
@@ -254,9 +256,8 @@ body{
   text-transform:capitalize;
 }
 #weather-icon{
-  font-size:36px;
-  opacity:0.5;
-  filter:grayscale(1);
+  opacity:0.8;
+  flex-shrink:0;
 }
 #weather-stats{
   display:grid;
@@ -291,6 +292,7 @@ body{
   display:flex;
   flex-direction:column;
   min-height:0;
+  margin-top:4px;
 }
 #uv-label{
   font-size:9px;
@@ -298,13 +300,19 @@ body{
   text-transform:uppercase;
   letter-spacing:0.08em;
   font-family:var(--mono);
-  margin-bottom:6px;
+  margin-bottom:8px;
+  flex-shrink:0;
+}
+#uv-chart-wrap{
+  flex:1;
+  min-height:0;
+  position:relative;
 }
 #uv-chart{
-  flex:1;
-  min-height:60px;
-  max-height:90px;
+  position:absolute;
+  inset:0;
   width:100%;
+  height:100%;
 }
 
 /* ── SYNC DOT ── */
@@ -478,7 +486,7 @@ body{
           <div id="weather-temp">—°</div>
           <div id="weather-desc">Loading…</div>
         </div>
-        <div id="weather-icon">◻</div>
+        <div id="weather-icon"></div>
       </div>
       <div id="weather-stats">
         <div class="w-stat">
@@ -500,7 +508,9 @@ body{
       </div>
       <div id="uv-section">
         <div id="uv-label">UV Index · Today</div>
-        <canvas id="uv-chart"></canvas>
+        <div id="uv-chart-wrap">
+          <canvas id="uv-chart"></canvas>
+        </div>
       </div>
     </div>
 
@@ -769,12 +779,57 @@ const WMO = {
   61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',
   80:'Light showers',81:'Showers',82:'Heavy showers',95:'Thunderstorm',96:'Hail storm'
 };
-const WMO_ICON = {
-  0:'○',1:'○',2:'◔',3:'●',45:'≋',48:'≋',
-  51:'·',53:'·',55:'∶',61:'∶',63:'∷',65:'∷',
-  71:'❄',73:'❄',75:'❄',80:'∶',81:'∷',82:'⚡',
-  95:'⚡',96:'⚡'
-};
+// SVG weather icons — minimal line style
+function weatherSVG(code){
+  const s = (inner, vb='0 0 40 40') =>
+    `<svg viewBox="${vb}" width="38" height="38" fill="none" stroke="#666" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+
+  // sun rays + circle
+  const sun = `<circle cx="20" cy="20" r="6"/>
+    <line x1="20" y1="4" x2="20" y2="9"/><line x1="20" y1="31" x2="20" y2="36"/>
+    <line x1="4" y1="20" x2="9" y2="20"/><line x1="31" y1="20" x2="36" y2="20"/>
+    <line x1="8.5" y1="8.5" x2="12" y2="12"/><line x1="28" y1="28" x2="31.5" y2="31.5"/>
+    <line x1="31.5" y1="8.5" x2="28" y2="12"/><line x1="12" y1="28" x2="8.5" y2="31.5"/>`;
+
+  // cloud shape
+  const cloud = `<path d="M10 28 Q6 28 6 23 Q6 18 11 18 Q11 13 16 13 Q20 13 21 16 Q25 14 28 17 Q32 17 32 22 Q32 28 28 28 Z"/>`;
+
+  // small cloud
+  const cloudSm = `<path d="M14 28 Q11 28 11 25 Q11 21 15 21 Q15 17 19 17 Q22 17 23 19 Q26 18 28 21 Q31 21 31 25 Q31 28 28 28 Z"/>`;
+
+  // sun + cloud
+  const sunCloud = `<circle cx="12" cy="14" r="5"/>
+    <line x1="12" y1="4" x2="12" y2="7"/><line x1="4" y1="14" x2="7" y2="14"/>
+    <line x1="5.5" y1="7.5" x2="7.5" y2="9.5"/><line x1="16.5" y1="7.5" x2="18" y2="6"/>
+    ${cloudSm}`;
+
+  // rain drops
+  const drops = `<line x1="16" y1="31" x2="14" y2="36"/><line x1="22" y1="31" x2="20" y2="36"/><line x1="28" y1="31" x2="26" y2="36"/>`;
+
+  // snow dots
+  const snow = `<circle cx="16" cy="33" r="1.2" fill="#666" stroke="none"/>
+    <circle cx="22" cy="35" r="1.2" fill="#666" stroke="none"/>
+    <circle cx="28" cy="33" r="1.2" fill="#666" stroke="none"/>`;
+
+  // fog lines
+  const fog = `<line x1="8" y1="18" x2="32" y2="18"/><line x1="11" y1="23" x2="32" y2="23"/><line x1="8" y1="28" x2="28" y2="28"/>`;
+
+  // lightning
+  const bolt = `<polyline points="24,12 18,22 22,22 16,34"/>`;
+
+  // group by condition
+  if(code===0)                        return s(sun);
+  if(code===1)                        return s(sun);
+  if(code===2)                        return s(sunCloud);
+  if(code===3)                        return s(cloud);
+  if(code===45||code===48)            return s(fog);
+  if(code>=51&&code<=55)              return s(cloudSm+drops);
+  if(code>=61&&code<=65)              return s(cloud+drops);
+  if(code>=71&&code<=75)              return s(cloud+snow);
+  if(code>=80&&code<=82)              return s(sunCloud+drops);
+  if(code===95||code===96)            return s(cloud+drops+bolt);
+  return s(cloud);
+}
 
 async function fetchWeather(){
   try{
@@ -787,12 +842,15 @@ async function fetchWeather(){
     const c = d.current;
     document.getElementById('weather-temp').textContent = Math.round(c.temperature_2m)+'°';
     document.getElementById('weather-desc').textContent = WMO[c.weather_code]||'';
-    document.getElementById('weather-icon').textContent = WMO_ICON[c.weather_code]||'○';
+    document.getElementById('weather-icon').innerHTML = weatherSVG(c.weather_code);
     document.getElementById('w-feels').textContent  = Math.round(c.apparent_temperature)+'°';
     document.getElementById('w-hum').textContent    = Math.round(c.relative_humidity_2m)+'%';
     document.getElementById('w-wind').textContent   = Math.round(c.wind_speed_10m)+' km/h';
     document.getElementById('w-precip').textContent = (c.precipitation||0).toFixed(1)+' mm';
-    if(d.hourly?.uv_index) drawUV(d.hourly.uv_index, d.hourly.time);
+    if(d.hourly?.uv_index){
+      lastUVData = {uv: d.hourly.uv_index, times: d.hourly.time};
+      drawUV(d.hourly.uv_index, d.hourly.time);
+    }
   }catch(e){
     document.getElementById('weather-desc').textContent='Unavailable';
   }
@@ -800,8 +858,9 @@ async function fetchWeather(){
 
 function drawUV(uvArr, timeArr){
   const canvas = document.getElementById('uv-chart');
-  const parent = canvas.parentElement;
-  const W = parent.clientWidth, H = canvas.parentElement.clientHeight || 80;
+  const wrap = document.getElementById('uv-chart-wrap');
+  const W = wrap.clientWidth || 200;
+  const H = wrap.clientHeight || 120;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
 
@@ -819,67 +878,85 @@ function drawUV(uvArr, timeArr){
   const max = Math.max(...vals, 1);
   const nowH = now.getHours();
 
-  const pad = {l:2,r:2,t:6,b:20};
-  const chartW = W - pad.l - pad.r;
-  const chartH = H - pad.t - pad.b;
-  const step = chartW / (vals.length - 1);
+  const monoFont = getComputedStyle(document.documentElement).getPropertyValue('--mono').trim() || 'monospace';
+  const pd = {l:4, r:4, t:22, b:22};
+  const chartW = W - pd.l - pd.r;
+  const chartH = H - pd.t - pd.b;
+  const step = chartW / Math.max(vals.length - 1, 1);
 
   ctx.clearRect(0,0,W,H);
 
-  // area fill
+  // horizontal guide lines
+  ctx.strokeStyle='rgba(255,255,255,0.04)';
+  ctx.lineWidth=0.8;
+  [0.25,0.5,0.75,1].forEach(f=>{
+    const y = pd.t + chartH*(1-f);
+    ctx.beginPath(); ctx.moveTo(pd.l,y); ctx.lineTo(pd.l+chartW,y); ctx.stroke();
+  });
+
+  // area fill under curve
   ctx.beginPath();
   vals.forEach((v,i)=>{
-    const x = pad.l + i*step;
-    const y = pad.t + chartH - (v/max)*chartH;
-    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    const x=pd.l+i*step, y=pd.t+chartH-(v/max)*chartH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   });
-  ctx.lineTo(pad.l+(vals.length-1)*step, pad.t+chartH);
-  ctx.lineTo(pad.l, pad.t+chartH);
+  ctx.lineTo(pd.l+(vals.length-1)*step, pd.t+chartH);
+  ctx.lineTo(pd.l, pd.t+chartH);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(180,180,180,0.07)';
+  ctx.fillStyle='rgba(200,200,200,0.06)';
   ctx.fill();
 
   // line
   ctx.beginPath();
   vals.forEach((v,i)=>{
-    const x = pad.l + i*step;
-    const y = pad.t + chartH - (v/max)*chartH;
-    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    const x=pd.l+i*step, y=pd.t+chartH-(v/max)*chartH;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
   });
-  ctx.strokeStyle = '#555';
-  ctx.lineWidth = 1.2;
+  ctx.strokeStyle='#505050';
+  ctx.lineWidth=1.5;
   ctx.stroke();
 
-  // current hour marker
-  const ci = labels.indexOf(nowH);
-  if(ci>=0){
-    const cx = pad.l + ci*step;
-    const cy = pad.t + chartH - (vals[ci]/max)*chartH;
-    ctx.beginPath();
-    ctx.arc(cx,cy,3,0,Math.PI*2);
-    ctx.fillStyle = '#aaa';
-    ctx.fill();
-    // current UV value
-    ctx.fillStyle='#888';
-    ctx.font=`10px ${getComputedStyle(document.documentElement).getPropertyValue('--mono')}`;
-    ctx.textAlign='center';
-    ctx.fillText('UV '+Math.round(vals[ci]), cx, cy-7);
-  }
-
-  // hour labels (every 3h)
-  ctx.fillStyle='#444';
-  ctx.font=`9px ${getComputedStyle(document.documentElement).getPropertyValue('--mono')}`;
+  // hour labels every 3h
+  ctx.fillStyle='#404040';
+  ctx.font=`10px ${monoFont}`;
   ctx.textAlign='center';
   labels.forEach((h,i)=>{
     if(h%3===0){
-      const x = pad.l + i*step;
-      ctx.fillText(h+'h', x, H-4);
+      ctx.fillText(h+'h', pd.l+i*step, H-5);
     }
   });
+
+  // current hour marker + value
+  const ci = labels.indexOf(nowH);
+  if(ci>=0){
+    const cx=pd.l+ci*step, cy=pd.t+chartH-(vals[ci]/max)*chartH;
+    // vertical dashed line
+    ctx.setLineDash([3,3]);
+    ctx.strokeStyle='rgba(255,255,255,0.12)';
+    ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(cx, pd.t+chartH); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.setLineDash([]);
+    // dot
+    ctx.beginPath(); ctx.arc(cx,cy,4,0,Math.PI*2);
+    ctx.fillStyle='#999'; ctx.fill();
+    // label above
+    ctx.fillStyle='#aaa';
+    ctx.font=`500 11px ${monoFont}`;
+    ctx.textAlign='center';
+    ctx.fillText('UV '+Math.round(vals[ci]), cx, cy-10);
+  }
 }
 
+let lastUVData = null;
+const origDrawUV = drawUV;
 fetchWeather();
 setInterval(fetchWeather, 10*60*1000);
+
+// Redraw UV on resize
+if(window.ResizeObserver){
+  new ResizeObserver(()=>{ if(lastUVData) drawUV(lastUVData.uv, lastUVData.times); })
+    .observe(document.getElementById('uv-chart-wrap'));
+}
 
 // ─── TASKS ────────────────────────────────────────────
 const EVENT_TAGS = ['appointments','events','birthdays','appointment','event','birthday'];
