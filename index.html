@@ -1059,6 +1059,8 @@ async function fetchWeather(){
       lastUVData = {uv: d.hourly.uv_index, times: d.hourly.time};
       drawUV(d.hourly.uv_index, d.hourly.time);
     }
+    // sync to visitor panel if active
+    if(typeof mirrorWeather === 'function' && currentView === 'visitor') mirrorWeather();
   }catch(e){
     document.getElementById('weather-desc').textContent='Unavailable';
   }
@@ -1232,6 +1234,8 @@ function makeCard(task, isEv){
 
   const card = document.createElement('div');
   card.className = 'task-card' + (isEv?' event-card':'');
+  card.dataset.key = taskKey(task);
+  card.dataset.content = taskKey(task) + '|' + (task.tags||[]).join(',');
 
   let dueHtml='';
   if(due){
@@ -1321,15 +1325,7 @@ function taskKey(t){
   return (t.name||'')+'|'+(t.due||'')+'|'+(t.status||'');
 }
 
-// Patch makeCard to also set data-content for diffing
-const _makeCard = makeCard;
-makeCard = function(task, isEv){
-  const card = _makeCard(task, isEv);
-  const key = taskKey(task);
-  card.dataset.key = key;
-  card.dataset.content = key + '|' + (task.tags||[]).join(',');
-  return card;
-};
+// (key/content set directly in makeCard)
 
 function setSyncStatus(ok, msg){
   document.getElementById('sync-dot').className = ok?'':'error';
@@ -1425,11 +1421,7 @@ function mirrorWeather(){
   if(lastUVData) drawUVv(lastUVData.uv, lastUVData.times);
 }
 // Keep visitor weather in sync whenever home weather updates
-const _origFetchWeather = fetchWeather;
-fetchWeather = async function(){
-  await _origFetchWeather.call(this);
-  if(currentView==='visitor') mirrorWeather();
-};
+// (mirrorWeather is called directly inside fetchWeather below)
 
 // ─── VISITOR UV CHART ────────────────────────────────
 function drawUVv(uvArr, timeArr){
