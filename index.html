@@ -315,7 +315,139 @@ body{
   height:100%;
 }
 
-/* ── SYNC DOT ── */
+/* ── VISITOR LAYOUT ── */
+#layout-visitor{
+  display:grid;
+  grid-template-columns:1fr var(--col-right-width);
+  height:100vh;
+  overflow:hidden;
+}
+#left-visitor{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+#right-visitor{
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#clock-widget-v{ flex:0 0 auto; }
+#weather-widget-v{ flex:1; gap:0; }
+#weather-top-v{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom:16px;
+  flex-shrink:0;
+}
+#weather-temp-v{
+  font-family:var(--mono);
+  font-size:52px;
+  font-weight:300;
+  color:var(--text);
+  line-height:1;
+}
+#weather-desc-v{
+  font-size:12px;
+  color:var(--text2);
+  margin-top:5px;
+  text-transform:capitalize;
+}
+#weather-icon-v{ opacity:0.8; flex-shrink:0; }
+#weather-stats-v{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  flex-shrink:0;
+  margin-bottom:16px;
+}
+#uv-section-v{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  margin-top:4px;
+}
+#uv-label-v{
+  font-size:9px;
+  color:var(--text3);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  font-family:var(--mono);
+  margin-bottom:8px;
+  flex-shrink:0;
+}
+#uv-chart-wrap-v{
+  flex:1;
+  min-height:0;
+  position:relative;
+}
+#uv-chart-v{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+}
+.clock-row-v{
+  display:flex;
+  align-items:baseline;
+  line-height:1;
+  margin-bottom:8px;
+}
+.clock-hm-v{
+  font-family:var(--mono);
+  font-size:var(--clock-hm-size);
+  font-weight:300;
+  color:var(--text);
+  letter-spacing:-3px;
+}
+.clock-s-v{
+  font-family:var(--mono);
+  font-size:var(--clock-s-size);
+  font-weight:300;
+  color:var(--text3);
+  letter-spacing:-1px;
+  margin-left:4px;
+  align-self:flex-end;
+  margin-bottom:6px;
+}
+.date-line-v{
+  font-family:var(--mono);
+  font-size:var(--date-size);
+  color:var(--text2);
+}
+
+/* NEWS CARDS */
+.news-card{
+  padding:12px 14px;
+  border:1px solid var(--border);
+  border-radius:var(--card-radius);
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  animation:fadeUp 0.25s ease both;
+  cursor:default;
+}
+.news-source{
+  font-size:9px;
+  font-family:var(--mono);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+  color:var(--text3);
+}
+.news-title{
+  font-size:var(--task-size);
+  font-weight:400;
+  color:var(--text);
+  line-height:var(--task-line-height);
+}
+.news-time{
+  font-size:var(--meta-size);
+  font-family:var(--mono);
+  color:var(--text2);
+}
 #sync-indicator{
   position:fixed;
   bottom:16px;
@@ -337,21 +469,26 @@ body{
 #sync-dot.error{background:var(--danger);animation:none;}
 
 /* ── SETTINGS ── */
-#settings-btn{
+#top-btns{
   position:fixed;
   top:14px;right:14px;
   z-index:90;
+  display:flex;
+  gap:6px;
+}
+.top-btn{
   background:none;
   border:1px solid var(--border2);
   color:var(--text3);
   font-size:11px;
   font-family:var(--font);
-  padding:5px 11px;
+  padding:5px 13px;
   border-radius:6px;
   cursor:pointer;
-  transition:color 0.15s,border-color 0.15s;
+  transition:color 0.15s,border-color 0.15s,background 0.15s;
 }
-#settings-btn:hover{color:var(--text2);border-color:#444;}
+.top-btn:hover{ color:var(--text2); border-color:#444; }
+.top-btn.active{ color:var(--text); border-color:#555; background:var(--surface2); }
 
 #settings-overlay{
   display:none;
@@ -435,7 +572,11 @@ body{
 </head>
 <body>
 
-<button id="settings-btn" onclick="openSettings()">Customize</button>
+<div id="top-btns">
+  <button class="top-btn active" id="btn-home" onclick="switchView('home')">Home</button>
+  <button class="top-btn" id="btn-visitor" onclick="switchView('visitor')">Visitor</button>
+  <button class="top-btn" id="btn-customize" onclick="openSettings()">Customize</button>
+</div>
 
 <div id="layout">
 
@@ -516,6 +657,68 @@ body{
 
   </div><!-- /right -->
 </div><!-- /layout -->
+
+<!-- VISITOR VIEW -->
+<div id="layout-visitor" style="display:none;">
+  <div id="left-visitor">
+
+    <!-- NEWS column A -->
+    <div class="col" id="col-news-a">
+      <div class="col-header">
+        <span class="col-title">World News</span>
+      </div>
+      <div class="task-list" id="news-list-a">
+        <div class="empty-state" id="news-empty-a">Loading news…</div>
+      </div>
+    </div>
+
+    <!-- NEWS column B -->
+    <div class="col" id="col-news-b">
+      <div class="col-header">
+        <span class="col-title">Latest</span>
+      </div>
+      <div class="task-list" id="news-list-b">
+        <div class="empty-state" id="news-empty-b" style="display:none"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: same clock + weather, duplicated in JS -->
+  <div id="right-visitor">
+
+    <div class="widget" id="clock-widget-v">
+      <div class="widget-label">Time</div>
+      <div class="clock-row-v">
+        <span class="clock-hm-v">00:00</span>
+        <span class="clock-s-v">:00</span>
+      </div>
+      <div class="date-line-v">—</div>
+    </div>
+
+    <div class="widget" id="weather-widget-v">
+      <div class="widget-label" id="weather-label-v">Vergato · Weather</div>
+      <div id="weather-top-v">
+        <div>
+          <div id="weather-temp-v">—°</div>
+          <div id="weather-desc-v">Loading…</div>
+        </div>
+        <div id="weather-icon-v"></div>
+      </div>
+      <div id="weather-stats-v">
+        <div class="w-stat"><div class="w-stat-label">Feels like</div><div class="w-stat-val" id="wv-feels">—°</div></div>
+        <div class="w-stat"><div class="w-stat-label">Humidity</div><div class="w-stat-val" id="wv-hum">—%</div></div>
+        <div class="w-stat"><div class="w-stat-label">Wind</div><div class="w-stat-val" id="wv-wind">— km/h</div></div>
+        <div class="w-stat"><div class="w-stat-label">Precipitation</div><div class="w-stat-val" id="wv-precip">— mm</div></div>
+      </div>
+      <div id="uv-section-v">
+        <div id="uv-label-v">UV Index · Today</div>
+        <div id="uv-chart-wrap-v"><canvas id="uv-chart-v"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- SYNC -->
 <div id="sync-indicator">
@@ -861,12 +1064,7 @@ async function fetchWeather(){
   }
 }
 
-function drawUV(uvArr, timeArr){
-  const canvas = document.getElementById('uv-chart');
-  const wrap = document.getElementById('uv-chart-wrap');
-  const W = wrap.clientWidth || 200;
-  const H = wrap.clientHeight || 120;
-  canvas.width = W; canvas.height = H;
+function _drawUVOnCtx(ctx, uvArr, timeArr, W, H){
   const ctx = canvas.getContext('2d');
 
   // only show 6am–10pm
@@ -952,8 +1150,16 @@ function drawUV(uvArr, timeArr){
   }
 }
 
+function drawUV(uvArr, timeArr){
+  const canvas=document.getElementById('uv-chart');
+  const wrap=document.getElementById('uv-chart-wrap');
+  if(!wrap||!canvas) return;
+  const W=wrap.clientWidth||200, H=wrap.clientHeight||120;
+  canvas.width=W; canvas.height=H;
+  _drawUVOnCtx(canvas.getContext('2d'), uvArr, timeArr, W, H);
+}
+
 let lastUVData = null;
-const origDrawUV = drawUV;
 fetchWeather();
 setInterval(fetchWeather, 10*60*1000);
 
@@ -1169,7 +1375,184 @@ function demo(){
   ];
 }
 
-// ─── INIT ─────────────────────────────────────────────
+// ─── VIEW SWITCHING ──────────────────────────────────
+let currentView = 'home';
+
+function switchView(view){
+  currentView = view;
+  document.getElementById('layout').style.display         = view==='home' ? 'grid' : 'none';
+  document.getElementById('layout-visitor').style.display = view==='visitor' ? 'grid' : 'none';
+  document.getElementById('btn-home').classList.toggle('active',    view==='home');
+  document.getElementById('btn-visitor').classList.toggle('active', view==='visitor');
+  if(view==='visitor'){
+    tickVisitor();
+    mirrorWeather();
+    if(lastUVData) drawUVv(lastUVData.uv, lastUVData.times);
+    startNewsSync();
+    if(window.ResizeObserver){
+      new ResizeObserver(()=>{ if(lastUVData) drawUVv(lastUVData.uv, lastUVData.times); })
+        .observe(document.getElementById('uv-chart-wrap-v'));
+    }
+  }
+}
+
+// ─── VISITOR CLOCK ────────────────────────────────────
+function tickVisitor(){
+  const n = new Date();
+  const hh=pad(n.getHours()), mm=pad(n.getMinutes()), ss=pad(n.getSeconds());
+  document.querySelector('.clock-hm-v').textContent = hh+':'+mm;
+  document.querySelector('.clock-s-v').textContent  = ':'+ss;
+  document.querySelector('.date-line-v').textContent =
+    n.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+setInterval(()=>{ if(currentView==='visitor') tickVisitor(); }, 1000);
+
+// ─── VISITOR WEATHER MIRROR ───────────────────────────
+// Mirrors the already-fetched weather data into the visitor panel
+function mirrorWeather(){
+  const fields = [
+    ['weather-temp','weather-temp-v'],['weather-desc','weather-desc-v'],
+    ['w-feels','wv-feels'],['w-hum','wv-hum'],
+    ['w-wind','wv-wind'],['w-precip','wv-precip'],
+  ];
+  fields.forEach(([src,dst])=>{
+    const s=document.getElementById(src), d=document.getElementById(dst);
+    if(s&&d) d.textContent=s.textContent;
+  });
+  const iconSrc=document.getElementById('weather-icon');
+  const iconDst=document.getElementById('weather-icon-v');
+  if(iconSrc&&iconDst) iconDst.innerHTML=iconSrc.innerHTML;
+  if(lastUVData) drawUVv(lastUVData.uv, lastUVData.times);
+}
+// Keep visitor weather in sync whenever home weather updates
+const _origFetchWeather = fetchWeather;
+fetchWeather = async function(){
+  await _origFetchWeather.call(this);
+  if(currentView==='visitor') mirrorWeather();
+};
+
+// ─── VISITOR UV CHART ────────────────────────────────
+function drawUVv(uvArr, timeArr){
+  const canvas=document.getElementById('uv-chart-v');
+  const wrap=document.getElementById('uv-chart-wrap-v');
+  if(!wrap||!canvas) return;
+  const W=wrap.clientWidth||200, H=wrap.clientHeight||120;
+  canvas.width=W; canvas.height=H;
+  // reuse same drawing logic — clone call with visitor canvas context
+  _drawUVOnCtx(canvas.getContext('2d'), uvArr, timeArr, W, H);
+}
+
+// ─── NEWS ─────────────────────────────────────────────
+// Uses the free GNews API (https://gnews.io) — free tier: 100 req/day
+// OR falls back to RSS via rss2json (free, no key needed)
+let newsCache = [];
+let newsTimer = null;
+
+async function fetchNews(){
+  try{
+    // rss2json converts any RSS to JSON, free, no key needed
+    const feeds = [
+      'https://feeds.bbci.co.uk/news/world/rss.xml',
+      'https://rss.cnn.com/rss/edition_world.rss',
+    ];
+    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feeds[0])}&count=20`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(data.status!=='ok') throw new Error('Feed error');
+
+    const items = (data.items||[]).map(item=>({
+      title: item.title,
+      source: data.feed?.title || 'BBC World',
+      pubDate: item.pubDate,
+      link: item.link,
+      guid: item.guid||item.link,
+    }));
+
+    diffNews(items);
+    newsCache = items;
+  }catch(e){
+    console.warn('News fetch failed:', e.message);
+  }
+}
+
+function diffNews(items){
+  const half = Math.ceil(items.length/2);
+  const colA = items.slice(0, half);
+  const colB = items.slice(half);
+  renderNewsList('news-list-a','news-empty-a', colA);
+  renderNewsList('news-list-b','news-empty-b', colB);
+}
+
+function renderNewsList(listId, emptyId, items){
+  const list=document.getElementById(listId);
+  const empty=document.getElementById(emptyId);
+  if(!list) return;
+
+  if(!items.length){
+    [...list.querySelectorAll('.news-card')].forEach(c=>c.remove());
+    if(empty){ empty.style.display='block'; empty.textContent='No news'; }
+    return;
+  }
+  if(empty) empty.style.display='none';
+
+  // Build key map of existing cards
+  const existing={};
+  [...list.querySelectorAll('.news-card')].forEach(c=>{ existing[c.dataset.key]=c; });
+  const newKeys=items.map(i=>i.guid);
+
+  // Remove stale
+  Object.keys(existing).forEach(k=>{ if(!newKeys.includes(k)) existing[k].remove(); });
+
+  // Insert/update in order
+  items.forEach((item,i)=>{
+    const key=item.guid;
+    let card=existing[key];
+    if(!card){
+      card=makeNewsCard(item);
+      const ref=list.querySelectorAll('.news-card')[i]||null;
+      list.insertBefore(card,ref);
+    } else {
+      // reorder if needed
+      const nodes=[...list.querySelectorAll('.news-card')];
+      if(nodes.indexOf(card)!==i){
+        const ref=list.querySelectorAll('.news-card')[i]||null;
+        list.insertBefore(card,ref);
+      }
+    }
+  });
+}
+
+function makeNewsCard(item){
+  const card=document.createElement('div');
+  card.className='news-card';
+  card.dataset.key=item.guid;
+  const ago=timeAgo(item.pubDate);
+  card.innerHTML=`
+    <div class="news-source">${esc(item.source)}</div>
+    <div class="news-title">${esc(item.title)}</div>
+    <div class="news-time">${ago}</div>`;
+  return card;
+}
+
+function timeAgo(dateStr){
+  if(!dateStr) return '';
+  const diff=Date.now()-new Date(dateStr).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1) return 'just now';
+  if(m<60) return m+'m ago';
+  const h=Math.floor(m/60);
+  if(h<24) return h+'h ago';
+  return Math.floor(h/24)+'d ago';
+}
+
+function startNewsSync(){
+  if(newsTimer) return; // already running
+  fetchNews();
+  newsTimer=setInterval(fetchNews, 5*60*1000); // every 5 min
+}
+
+
 applyCfg(CFG);
 startSync();
 </script>
